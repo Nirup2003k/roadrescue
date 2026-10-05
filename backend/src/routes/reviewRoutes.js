@@ -1,0 +1,10 @@
+const express = require('express');
+const { createReview, listMechanicReviews, listMyReviews, listReviewsReceived } = require('../controllers/reviewController');
+const { requireAuth } = require('../middleware/auth');
+const { requireRole } = require('../middleware/roleCheck');
+const router = express.Router();
+router.get('/mechanic/:mechanicId', listMechanicReviews);
+router.post('/', requireAuth, requireRole('customer'), createReview);
+router.get('/my', requireAuth, requireRole('customer'), listMyReviews);
+router.get('/mine-as-mechanic', requireAuth, requireRole('mechanic'), listReviewsReceived);
+module.exports = router;

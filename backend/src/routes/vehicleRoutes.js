@@ -1,0 +1,12 @@
+const express = require('express');
+const { listVehicles, getVehicle, createVehicle, updateVehicle, deleteVehicle } = require('../controllers/vehicleController');
+const { requireAuth } = require('../middleware/auth');
+const { requireRole } = require('../middleware/roleCheck');
+const router = express.Router();
+router.use(requireAuth, requireRole('customer'));
+router.get('/', listVehicles);
+router.post('/', createVehicle);
+router.get('/:id', getVehicle);
+router.put('/:id', updateVehicle);
+router.delete('/:id', deleteVehicle);
+module.exports = router;
