@@ -12,6 +12,8 @@ import EmptyState from '../../components/ui/EmptyState';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { formatDate } from '../../utils/format';
 
+import MechanicLiveTracker from '../../components/MechanicLiveTracker';
+
 const NEXT_STATUS = { accepted: 'in_progress', in_progress: 'completed' };
 const NEXT_LABEL = { accepted: 'Start Job', in_progress: 'Mark Completed' };
 
@@ -60,6 +62,9 @@ export default function ActiveJobs() {
                   <div className="flex items-start gap-2"><FileText className="h-4 w-4 text-slate-400 mt-0.5" /><span className="text-ink">{b.problem_description}</span></div>
                   <div className="flex items-start gap-2"><Phone className="h-4 w-4 text-slate-400 mt-0.5" /><span className="text-ink">{b.customer_name} · {b.customer_phone}</span></div>
                 </div>
+
+                <MechanicLiveTracker bookingId={b.id} status={b.status} />
+
                 <div className="mt-4">
                   <Button variant="beacon" onClick={() => setConfirmBooking(b)}>
                     {b.status === 'accepted' ? <PlayCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}

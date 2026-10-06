@@ -56,16 +56,19 @@ admin_token = r["data"]["token"]
 
 call("POST", "/auth/login", body={"email": "rahul.sharma@example.com", "password": "wrongpass"}, expect=401, label="Login with wrong password rejected")
 
+import time
+ts = int(time.time() * 1000)
+
 print("\n=== REGISTRATION (new customer + new mechanic) ===")
 _, r = call("POST", "/auth/register", body={
-    "name": "Test Customer", "email": "test.customer.flow@example.com", "password": "test1234",
-    "phone": "9111111111", "role": "customer", "address": "1 Test Lane", "city": "Chennai"
+    "name": "Test Customer", "email": f"test.customer.{ts}@example.com", "password": "test1234",
+    "phone": f"91{ts % 100000000:08d}", "role": "customer", "address": "1 Test Lane", "city": "Chennai"
 }, expect=201, label="Register new customer")
 new_cust_token = r["data"]["token"]
 
 call("POST", "/auth/register", body={
     "name": "Dup Customer", "email": "rahul.sharma@example.com", "password": "test1234",
-    "phone": "9111111112", "role": "customer"
+    "phone": f"92{ts % 100000000:08d}", "role": "customer"
 }, expect=409, label="Duplicate email rejected")
 
 call("POST", "/auth/register", body={
@@ -73,8 +76,8 @@ call("POST", "/auth/register", body={
 }, expect=422, label="Invalid registration fields rejected")
 
 _, r = call("POST", "/auth/register", body={
-    "name": "New Mechanic Flow", "email": "new.mechanic.flow@example.com", "password": "test1234",
-    "phone": "9111111113", "role": "mechanic", "experienceYears": 1, "serviceArea": "Pune"
+    "name": "New Mechanic Flow", "email": f"new.mechanic.{ts}@example.com", "password": "test1234",
+    "phone": f"93{ts % 100000000:08d}", "role": "mechanic", "experienceYears": 1, "serviceArea": "Pune"
 }, expect=201, label="Register new mechanic (pending approval)")
 new_mech_token = r["data"]["token"]
 new_mech_id = r["data"]["user"]["id"]
@@ -84,14 +87,16 @@ call("GET", "/admin/stats", token=cust_token, expect=403, label="Customer blocke
 call("GET", "/vehicles", token=mech_token, expect=403, label="Mechanic blocked from customer vehicles route")
 call("GET", "/admin/stats", expect=401, label="Anonymous blocked from admin stats")
 
+reg_num = f"TN01ZZ{ts % 10000:04d}"
+
 print("\n=== VEHICLES (customer) ===")
 _, r = call("POST", "/vehicles", token=new_cust_token, body={
-    "vehicleType": "Car", "brand": "Toyota", "model": "Corolla", "registrationNumber": "TN01ZZ9999"
+    "vehicleType": "Car", "brand": "Toyota", "model": "Corolla", "registrationNumber": reg_num
 }, expect=201, label="Create vehicle")
 vehicle_id = r["data"]["vehicle"]["id"]
 
 call("POST", "/vehicles", token=new_cust_token, body={
-    "vehicleType": "Car", "brand": "Toyota", "model": "Corolla", "registrationNumber": "TN01ZZ9999"
+    "vehicleType": "Car", "brand": "Toyota", "model": "Corolla", "registrationNumber": reg_num
 }, expect=409, label="Duplicate registration number rejected")
 
 call("GET", "/vehicles", token=new_cust_token, expect=200, label="List own vehicles")
@@ -206,7 +211,7 @@ print(f"    confirmed: booking kept price_snapshot={original_snapshot}, live ser
 
 call("PUT", f"/services/{services['Engine Problem']}", token=admin_token, body={"basePrice": engine_service["base_price"]}, expect=200, label="Admin restores original Engine Problem price")
 
-print("\n=== REVIEWS ===")
+print("\n=== REVIEWS (PHASE 5 HARDENING) ===")
 call("POST", "/reviews", token=new_cust_token, body={"bookingId": booking_id, "rating": 6, "comment": "x"}, expect=422, label="Rating out of range rejected")
 _, r = call("POST", "/reviews", token=new_cust_token, body={"bookingId": booking_id, "rating": 5, "comment": "Fixed it fast, great job!"}, expect=201, label="Submit review for completed booking")
 call("POST", "/reviews", token=new_cust_token, body={"bookingId": booking_id, "rating": 4}, expect=409, label="Duplicate review rejected")
@@ -224,6 +229,7 @@ booking2_id = r["data"]["booking"]["id"]
 
 _, r = call("PUT", f"/bookings/{booking2_id}/cancel", token=new_cust_token, body={"reason": "Changed plans"}, expect=200, label="Customer cancels pending booking")
 assert r["data"]["booking"]["status"] == "cancelled"
+call("POST", "/reviews", token=new_cust_token, body={"bookingId": booking2_id, "rating": 5}, expect=409, label="Review of cancelled/non-completed booking rejected")
 
 _, r = call("POST", "/bookings", token=new_cust_token, body={
     "vehicleId": vehicle_id, "mechanicId": mech_id, "serviceId": services["Flat Tyre"],
@@ -236,8 +242,8 @@ assert r["data"]["booking"]["status"] == "rejected"
 
 print("\n=== PHASE 1: MECHANIC AVAILABILITY ENFORCEMENT ===")
 _, r = call("POST", "/auth/register", body={
-    "name": "Avail Test Mechanic", "email": "avail.test.mech@example.com", "password": "test1234",
-    "phone": "9222222222", "role": "mechanic", "experienceYears": 4, "serviceArea": "Bengaluru"
+    "name": "Avail Test Mechanic", "email": f"avail.test.mech.{ts}@example.com", "password": "test1234",
+    "phone": f"96{ts % 100000000:08d}", "role": "mechanic", "experienceYears": 4, "serviceArea": "Bengaluru"
 }, expect=201, label="Register availability-test mechanic")
 avail_mech_token = r["data"]["token"]
 avail_mech_id = r["data"]["user"]["id"]
@@ -246,18 +252,20 @@ call("PUT", "/mechanics/services", token=avail_mech_token, body={"serviceIds": [
 call("PUT", "/mechanics/availability", token=avail_mech_token, body={"availabilityStatus": "available"}, expect=200, label="Availability-test mechanic sets available")
 
 _, r = call("POST", "/auth/register", body={
-    "name": "Avail Test Customer", "email": "avail.test.cust@example.com", "password": "test1234",
-    "phone": "9222222223", "role": "customer"
+    "name": "Avail Test Customer", "email": f"avail.test.cust.{ts}@example.com", "password": "test1234",
+    "phone": f"94{ts % 100000000:08d}", "role": "customer"
 }, expect=201, label="Register availability-test customer")
 avail_cust_token = r["data"]["token"]
 
+call("POST", "/reviews", token=avail_cust_token, body={"bookingId": booking_id, "rating": 5}, expect=404, label="Review for another customer's booking rejected")
+
 _, r = call("POST", "/vehicles", token=avail_cust_token, body={
-    "vehicleType": "Car", "brand": "Honda", "model": "Amaze", "registrationNumber": "KA05AV0001"
+    "vehicleType": "Car", "brand": "Honda", "model": "Amaze", "registrationNumber": f"KA05AV{ts % 10000:04d}"
 }, expect=201, label="Availability-test vehicle A")
 avail_vehicle_id = r["data"]["vehicle"]["id"]
 
 _, r = call("POST", "/vehicles", token=avail_cust_token, body={
-    "vehicleType": "Bike", "brand": "Honda", "model": "Activa", "registrationNumber": "KA05AV0002"
+    "vehicleType": "Bike", "brand": "Honda", "model": "Activa", "registrationNumber": f"KA05BW{ts % 10000:04d}"
 }, expect=201, label="Availability-test vehicle B")
 avail_vehicle2_id = r["data"]["vehicle"]["id"]
 
@@ -284,12 +292,12 @@ call("PUT", f"/bookings/{booking_b_id}/accept", token=avail_mech_token, expect=4
 call("PUT", "/mechanics/availability", token=avail_mech_token, body={"availabilityStatus": "available"}, expect=409, label="Busy mechanic cannot manually force themselves available")
 
 _, r = call("POST", "/auth/register", body={
-    "name": "Race Test Customer", "email": "race.test.cust@example.com", "password": "test1234",
-    "phone": "9222222224", "role": "customer"
+    "name": "Race Test Customer", "email": f"race.test.cust.{ts}@example.com", "password": "test1234",
+    "phone": f"95{ts % 100000000:08d}", "role": "customer"
 }, expect=201, label="Register race-condition test customer")
 race_cust_token = r["data"]["token"]
 _, r = call("POST", "/vehicles", token=race_cust_token, body={
-    "vehicleType": "Car", "brand": "Tata", "model": "Nexon", "registrationNumber": "KA05RC0001"
+    "vehicleType": "Car", "brand": "Tata", "model": "Nexon", "registrationNumber": f"KA05RC{ts % 10000:04d}"
 }, expect=201, label="Race-condition test vehicle")
 race_vehicle_id = r["data"]["vehicle"]["id"]
 call("POST", "/bookings", token=race_cust_token, body={

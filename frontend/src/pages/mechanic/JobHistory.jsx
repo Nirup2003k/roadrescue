@@ -8,7 +8,8 @@ import { Table, THead, TRow, TH, TD } from '../../components/ui/Table';
 import Badge from '../../components/ui/Badge';
 import Loader from '../../components/ui/Loader';
 import EmptyState from '../../components/ui/EmptyState';
-import { formatCurrency } from '../../utils/format';
+import StarRating from '../../components/ui/StarRating';
+import { formatDate, formatCurrency } from '../../utils/format';
 
 const FILTERS = [
   { value: '', label: 'All' }, { value: 'completed', label: 'Completed' },
@@ -43,15 +44,35 @@ export default function JobHistory() {
       ) : (
         <Card>
           <Table>
-            <THead><TRow><TH>Service</TH><TH>Customer</TH><TH>Vehicle</TH><TH>Earnings</TH><TH>Status</TH></TRow></THead>
+            <THead>
+              <TRow>
+                <TH>Booking</TH>
+                <TH>Service</TH>
+                <TH>Customer</TH>
+                <TH>Vehicle</TH>
+                <TH>Date</TH>
+                <TH>Earnings</TH>
+                <TH>Status</TH>
+                <TH>Rating</TH>
+              </TRow>
+            </THead>
             <tbody>
               {bookings.map((b) => (
                 <TRow key={b.id}>
+                  <TD>#{b.id}</TD>
                   <TD className="font-medium">{b.service_name}</TD>
                   <TD>{b.customer_name}</TD>
                   <TD>{b.vehicle_registration}</TD>
+                  <TD className="whitespace-nowrap">{formatDate(b.completed_at ?? b.requested_at)}</TD>
                   <TD>{b.status === 'completed' ? formatCurrency(b.price_snapshot) : '—'}</TD>
                   <TD><Badge status={b.status} /></TD>
+                  <TD>
+                    {b.review_rating ? (
+                      <StarRating value={b.review_rating} readOnly size={14} />
+                    ) : (
+                      <span className="text-slate-400 text-xs">—</span>
+                    )}
+                  </TD>
                 </TRow>
               ))}
             </tbody>

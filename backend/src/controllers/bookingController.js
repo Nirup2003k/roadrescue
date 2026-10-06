@@ -4,6 +4,7 @@ const { success } = require('../utils/response');
 const { query, withTransaction } = require('../db/query');
 const { rules, runValidation } = require('../validators/validate');
 const { haversineDistanceKm, estimateEtaMinutes, isValidLatitude, isValidLongitude } = require('../utils/geo');
+const { notifyBookingStatusChange } = require('../socket');
 
 const ACTIVE_STATUSES = ['pending', 'accepted', 'in_progress'];
 
@@ -15,7 +16,9 @@ const DETAIL_SELECT = `
     s.name AS service_name, s.base_price AS current_service_price,
     cu.name AS customer_name, cu.phone AS customer_phone,
     me.name AS mechanic_name, me.phone AS mechanic_phone,
-    (SELECT COUNT(*) FROM reviews rv WHERE rv.booking_id = b.id) AS has_review
+    (SELECT COUNT(*) FROM reviews rv WHERE rv.booking_id = b.id) AS has_review,
+    (SELECT rating FROM reviews rv WHERE rv.booking_id = b.id) AS review_rating,
+    (SELECT comment FROM reviews rv WHERE rv.booking_id = b.id) AS review_comment
   FROM bookings b
   JOIN vehicles v ON v.id = b.vehicle_id
   JOIN services s ON s.id = b.service_id
@@ -158,6 +161,7 @@ const acceptBooking = asyncHandler(async (req, res) => {
     await conn.query(`UPDATE mechanics SET availability_status = 'busy' WHERE user_id = ?`, [req.user.id]);
   });
 
+  notifyBookingStatusChange(booking.id, 'accepted');
   success(res, 200, 'Request accepted.', { booking: await getBookingOr404(booking.id) });
 });
 
@@ -167,6 +171,7 @@ const rejectBooking = asyncHandler(async (req, res) => {
   if (req.user.role !== 'mechanic') throw new ApiError(403, 'Only mechanics can reject requests.');
   if (booking.status !== 'pending') throw new ApiError(409, `Cannot reject a request that is already "${booking.status}".`);
   await query(`UPDATE bookings SET status = 'rejected' WHERE id = ?`, [booking.id]);
+  notifyBookingStatusChange(booking.id, 'rejected');
   success(res, 200, 'Request rejected.', { booking: await getBookingOr404(booking.id) });
 });
 
@@ -188,6 +193,7 @@ const advanceStatus = asyncHandler(async (req, res) => {
     if (nextStatus === 'completed') await releaseMechanicIfFree(conn, req.user.id);
   });
 
+  notifyBookingStatusChange(booking.id, nextStatus);
   success(res, 200, `Job marked as ${nextStatus.replace('_', ' ')}.`, { booking: await getBookingOr404(booking.id) });
 });
 
@@ -207,6 +213,7 @@ const cancelBooking = asyncHandler(async (req, res) => {
     if (wasAccepted) await releaseMechanicIfFree(conn, booking.mechanic_id);
   });
 
+  notifyBookingStatusChange(booking.id, 'cancelled');
   success(res, 200, 'Request cancelled.', { booking: await getBookingOr404(booking.id) });
 });
 
