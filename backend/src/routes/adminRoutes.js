@@ -3,6 +3,7 @@ const {
   getStats, listCustomers, listMechanicsAdmin, suspendCustomer, activateCustomer,
   approveMechanic, suspendMechanic, activateMechanic, listAllBookings, listAllReviews, deleteReview,
 } = require('../controllers/adminController');
+const { listAllComplaints, updateComplaintStatus } = require('../controllers/complaintController');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/roleCheck');
 const router = express.Router();
@@ -18,4 +19,7 @@ router.put('/mechanics/:id/activate', activateMechanic);
 router.get('/bookings', listAllBookings);
 router.get('/reviews', listAllReviews);
 router.delete('/reviews/:id', deleteReview);
+router.get('/complaints', listAllComplaints);
+router.put('/complaints/:id/status', updateComplaintStatus);
 module.exports = router;
+

@@ -5,6 +5,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { customerNav } from '../../components/layout/navConfig';
 import { bookingApi } from '../../api/bookings';
 import { reviewApi } from '../../api/reviews';
+import { complaintApi } from '../../api/complaints';
 import { useToast } from '../../context/ToastContext';
 import { Card, CardHeader, CardBody } from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -13,6 +14,7 @@ import Loader from '../../components/ui/Loader';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Modal from '../../components/ui/Modal';
 import Textarea from '../../components/ui/Textarea';
+import Input from '../../components/ui/Input';
 import StarRating from '../../components/ui/StarRating';
 import ErrorBanner from '../../components/ui/ErrorBanner';
 import TrackingMap from '../../components/TrackingMap';
@@ -39,14 +41,26 @@ export default function BookingDetails() {
   const [reviewError, setReviewError] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  // Complaint state
+  const [complaintOpen, setComplaintOpen] = useState(false);
+  const [complaintSubject, setComplaintSubject] = useState('');
+  const [complaintDesc, setComplaintDesc] = useState('');
+  const [complaintError, setComplaintError] = useState('');
+  const [submittingComplaint, setSubmittingComplaint] = useState(false);
+  const [myComplaints, setMyComplaints] = useState([]);
+
   // Real-time tracking state
   const [mechanicLocation, setMechanicLocation] = useState(null);
-  const [socketStatus, setSocketStatus] = useState('disconnected'); // 'connected' | 'reconnecting' | 'disconnected'
+  const [socketStatus, setSocketStatus] = useState('disconnected');
 
   function load() {
     bookingApi.get(id)
       .then((res) => setBooking(res.data.booking))
       .catch(() => setNotFound(true));
+
+    complaintApi.getBookingComplaints(id)
+      .then((res) => setMyComplaints(res.data.complaints))
+      .catch(() => setMyComplaints([]));
   }
 
   useEffect(load, [id]);
@@ -143,6 +157,24 @@ export default function BookingDetails() {
       setReviewError(err.message);
     } finally {
       setSubmittingReview(false);
+    }
+  }
+
+  async function handleSubmitComplaint(e) {
+    e.preventDefault();
+    setComplaintError('');
+    setSubmittingComplaint(true);
+    try {
+      await complaintApi.create({ bookingId: id, subject: complaintSubject, description: complaintDesc });
+      toast.success('Dispute reported to admin support.');
+      setComplaintOpen(false);
+      setComplaintSubject('');
+      setComplaintDesc('');
+      load();
+    } catch (err) {
+      setComplaintError(err.message);
+    } finally {
+      setSubmittingComplaint(false);
     }
   }
 
@@ -351,7 +383,27 @@ export default function BookingDetails() {
                 {CANCELLABLE.includes(booking.status) && <Button variant="danger" className="w-full" onClick={() => setCancelOpen(true)}>Cancel Request</Button>}
                 {booking.status === 'completed' && !Number(booking.has_review) && <Button variant="beacon" className="w-full" onClick={() => setReviewOpen(true)}>Rate this Mechanic</Button>}
                 {booking.status === 'completed' && Number(booking.has_review) > 0 && <p className="text-sm text-slate-500 text-center">You've reviewed this completed service.</p>}
-                {!CANCELLABLE.includes(booking.status) && booking.status !== 'completed' && <p className="text-sm text-slate-500 text-center">No actions available for this status.</p>}
+                
+                <Button variant="outline" className="w-full text-slate-700 hover:text-slate-900 border-slate-300" onClick={() => setComplaintOpen(true)}>
+                  Report Issue / Dispute
+                </Button>
+
+                {myComplaints.length > 0 && (
+                  <div className="pt-2 border-t border-slate-100">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Reported Issues</p>
+                    <div className="space-y-1.5">
+                      {myComplaints.map((c) => (
+                        <div key={c.id} className="text-xs p-2 bg-slate-50 rounded border border-slate-200">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-ink">{c.subject}</span>
+                            <span className="capitalize text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">{c.status.replace('_', ' ')}</span>
+                          </div>
+                          {c.admin_notes && <p className="text-[11px] text-beacon-800 mt-1">Note: {c.admin_notes}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardBody>
             </Card>
           </div>
@@ -370,6 +422,15 @@ export default function BookingDetails() {
             <StarRating value={rating} onChange={setRating} size={28} />
           </div>
           <Textarea label="Comment" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Optional — share details about the service" />
+        </form>
+      </Modal>
+
+      <Modal open={complaintOpen} onClose={() => setComplaintOpen(false)} title="Report an Issue or Dispute"
+        footer={<><Button variant="ghost" onClick={() => setComplaintOpen(false)} disabled={submittingComplaint}>Cancel</Button><Button variant="beacon" onClick={handleSubmitComplaint} loading={submittingComplaint}>Submit Complaint</Button></>}>
+        <form onSubmit={handleSubmitComplaint} className="space-y-4">
+          <ErrorBanner message={complaintError} />
+          <Input label="Subject / Brief Summary" required value={complaintSubject} onChange={(e) => setComplaintSubject(e.target.value)} placeholder="e.g. Mechanic overcharged / delayed arrival" />
+          <Textarea label="Detailed Description" required value={complaintDesc} onChange={(e) => setComplaintDesc(e.target.value)} placeholder="Describe what happened so our admin team can investigate and resolve it." />
         </form>
       </Modal>
     </DashboardLayout>

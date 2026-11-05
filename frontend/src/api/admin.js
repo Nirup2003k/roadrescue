@@ -11,4 +11,6 @@ export const adminApi = {
   bookings: (params = {}) => client.get('/admin/bookings', { params }),
   reviews: () => client.get('/admin/reviews'),
   deleteReview: (id) => client.delete(`/admin/reviews/${id}`),
+  complaints: (params = {}) => client.get('/admin/complaints', { params }),
+  updateComplaintStatus: (id, data) => client.put(`/admin/complaints/${id}/status`, data),
 };

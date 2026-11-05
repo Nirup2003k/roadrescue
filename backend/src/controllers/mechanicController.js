@@ -13,7 +13,7 @@ const RATING_SELECT = `
 const listMechanics = asyncHandler(async (req, res) => {
   const { serviceId, availableOnly } = req.query;
   let sql = `
-    SELECT u.id, u.name, u.phone, m.bio, m.experience_years, m.service_area,
+    SELECT u.id, u.name, m.bio, m.experience_years, m.service_area,
            m.availability_status, ${RATING_SELECT}
     FROM mechanics m JOIN users u ON u.id = m.user_id
     WHERE m.approval_status = 'approved' AND u.status = 'active'
@@ -48,7 +48,7 @@ const listNearbyMechanics = asyncHandler(async (req, res) => {
   const service = services[0];
 
   const mechanics = await query(
-    `SELECT u.id, u.name, u.phone, m.bio, m.experience_years, m.service_area,
+    `SELECT u.id, u.name, m.bio, m.experience_years, m.service_area,
             m.availability_status, m.latitude, m.longitude, ${RATING_SELECT}
      FROM mechanics m
      JOIN users u ON u.id = m.user_id
@@ -77,7 +77,7 @@ const listNearbyMechanics = asyncHandler(async (req, res) => {
 
 const getMechanic = asyncHandler(async (req, res) => {
   const rows = await query(
-    `SELECT u.id, u.name, u.phone, u.status, m.bio, m.experience_years, m.service_area,
+    `SELECT u.id, u.name, u.status, m.bio, m.experience_years, m.service_area,
             m.availability_status, m.approval_status, ${RATING_SELECT}
      FROM mechanics m JOIN users u ON u.id = m.user_id WHERE m.user_id = ?`,
     [req.params.id]

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, ShieldCheck, ClipboardList, Star, Clock } from 'lucide-react';
+import { Users, ShieldCheck, ClipboardList, Star, Clock, IndianRupee, AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { adminNav } from '../../components/layout/navConfig';
@@ -8,7 +8,7 @@ import StatCard from '../../components/ui/StatCard';
 import { Card, CardHeader, CardBody } from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Loader from '../../components/ui/Loader';
-import { formatDate } from '../../utils/format';
+import { formatDate, formatCurrency } from '../../utils/format';
 
 const STATUS_COLORS = { pending: '#F5A524', accepted: '#2F6FA8', in_progress: '#1E4869', completed: '#2E9E6D', rejected: '#D6483D', cancelled: '#8B93A1' };
 
@@ -21,11 +21,12 @@ export default function AdminDashboard() {
     <DashboardLayout navItems={adminNav} title="Dashboard">
       {!stats ? <Loader label="Loading dashboard stats..." /> : (
         <>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <StatCard icon={Users} label="Customers" value={stats.customerCount} tone="white" />
             <StatCard icon={ShieldCheck} label="Mechanics" value={stats.mechanicCount} tone="white" />
             <StatCard icon={ClipboardList} label="Total Bookings" value={stats.totalBookings} tone="ink" />
-            <StatCard icon={Clock} label="Pending Approvals" value={stats.pendingApprovals} tone="beacon" />
+            <StatCard icon={IndianRupee} label="Platform Revenue" value={formatCurrency(stats.totalRevenue || 0)} tone="beacon" />
+            <StatCard icon={AlertCircle} label="Pending Disputes" value={stats.pendingComplaints || 0} tone="white" />
           </div>
           <div className="grid lg:grid-cols-3 gap-5 mb-6">
             <Card className="lg:col-span-2">

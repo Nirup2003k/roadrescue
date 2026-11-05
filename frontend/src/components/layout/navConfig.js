@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Car, PlusCircle, ClipboardList, UserCircle, Star,
-  Inbox, Wrench, History, Users, ShieldCheck, ListChecks, MessageSquare,
+  Inbox, Wrench, History, Users, ShieldCheck, ListChecks, MessageSquare, AlertTriangle,
 } from 'lucide-react';
 export const customerNav = [
   { to: '/customer', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -25,4 +25,5 @@ export const adminNav = [
   { to: '/admin/services', label: 'Services', icon: ListChecks },
   { to: '/admin/bookings', label: 'Bookings', icon: ClipboardList },
   { to: '/admin/reviews', label: 'Reviews', icon: MessageSquare },
+  { to: '/admin/complaints', label: 'Disputes', icon: AlertTriangle },
 ];

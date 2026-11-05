@@ -140,6 +140,7 @@ distances = [m["distance_km"] for m in nearby]
 assert distances == sorted(distances), "results must be sorted nearest-first"
 
 first = nearby[0]
+assert "phone" not in first, "public nearby mechanics response must NOT leak mechanic phone numbers"
 expected_eta = round(first["distance_km"] / 30 * 60)
 assert abs(first["estimated_arrival_minutes"] - expected_eta) <= 1, "ETA must follow (distance/avg_speed)*60"
 print(f"    distance/ETA formula verified: {first['distance_km']} km -> {first['estimated_arrival_minutes']} min (expected ~{expected_eta})")
@@ -325,9 +326,11 @@ call("PUT", "/mechanics/availability", token=mech_token, body={"availabilityStat
 _, r = call("GET", "/mechanics/earnings", token=mech_token, expect=200, label="Mechanic views earnings summary")
 print("    earnings summary:", r["data"]["summary"])
 
-print("\n=== ADMIN OPERATIONS ===")
+print("\n=== ADMIN OPERATIONS & REVENUE METRICS ===")
 _, r = call("GET", "/admin/stats", token=admin_token, expect=200, label="Admin dashboard stats")
-print("    stats:", {k: r["data"][k] for k in ["customerCount", "mechanicCount", "pendingApprovals", "totalBookings", "totalReviews"]})
+print("    stats:", {k: r["data"][k] for k in ["customerCount", "mechanicCount", "pendingApprovals", "totalBookings", "totalRevenue", "pendingComplaints"]})
+assert "totalRevenue" in r["data"], "admin stats must include totalRevenue metric"
+assert isinstance(r["data"]["totalRevenue"], (int, float)), "totalRevenue must be numeric"
 
 call("GET", "/admin/customers", token=admin_token, expect=200, label="Admin lists customers")
 _, r = call("GET", "/admin/mechanics?status=pending", token=admin_token, expect=200, label="Admin lists pending mechanics")
@@ -336,8 +339,10 @@ assert any(m["id"] == new_mech_id for m in pending), "newly registered mechanic 
 
 call("PUT", f"/admin/mechanics/{new_mech_id}/approve", token=admin_token, expect=200, label="Admin approves pending mechanic")
 _, r = call("GET", "/mechanics", expect=200, label="Public mechanic directory unfiltered")
-all_mech_ids = [m["id"] for m in r["data"]["mechanics"]]
+all_mechs = r["data"]["mechanics"]
+all_mech_ids = [m["id"] for m in all_mechs]
 assert new_mech_id in all_mech_ids, "approved mechanic should now appear in directory"
+assert "phone" not in all_mechs[0], "public mechanic list must NOT include phone numbers"
 
 call("PUT", f"/admin/customers/{cust_id}/suspend", token=admin_token, expect=200, label="Admin suspends a customer")
 call("POST", "/auth/login", body={"email": "rahul.sharma@example.com", "password": "password123"}, expect=403, label="Suspended customer cannot log in")
@@ -346,6 +351,26 @@ call("POST", "/auth/login", body={"email": "rahul.sharma@example.com", "password
 
 call("GET", "/admin/bookings", token=admin_token, expect=200, label="Admin views all bookings")
 call("GET", "/admin/reviews", token=admin_token, expect=200, label="Admin views all reviews")
+
+print("\n=== COMPLAINTS & DISPUTES WORKFLOW ===")
+_, r = call("POST", "/complaints", token=new_cust_token, body={
+    "bookingId": booking_id, "subject": "Delay in service arrival", "description": "Mechanic took longer than initially estimated."
+}, expect=201, label="Customer reports a complaint for their booking")
+complaint_id = r["data"]["complaint"]["id"]
+
+call("POST", "/complaints", token=cust_token, body={
+    "bookingId": booking_id, "subject": "Unauthorized complaint", "description": "Not my booking"
+}, expect=403, label="Unrelated customer blocked from reporting complaint on another's booking")
+
+_, r = call("GET", "/complaints/my", token=new_cust_token, expect=200, label="Customer views their submitted complaints")
+assert len(r["data"]["complaints"]) >= 1
+
+_, r = call("GET", "/admin/complaints", token=admin_token, expect=200, label="Admin lists all platform complaints")
+assert any(c["id"] == complaint_id for c in r["data"]["complaints"])
+
+call("PUT", f"/admin/complaints/{complaint_id}/status", token=admin_token, body={
+    "status": "resolved", "adminNotes": "Investigated and issued customer apology."
+}, expect=200, label="Admin resolves complaint with notes")
 
 print(f"\n=== RESULTS: {PASS} passed, {FAIL} failed ===")
 sys.exit(1 if FAIL else 0)

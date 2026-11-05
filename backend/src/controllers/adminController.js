@@ -11,6 +11,8 @@ const getStats = asyncHandler(async (req, res) => {
   const [totalBookings] = await query(`SELECT COUNT(*) AS count FROM bookings`);
   const [totalReviews] = await query(`SELECT COUNT(*) AS count FROM reviews`);
   const [avgRating] = await query(`SELECT COALESCE(ROUND(AVG(rating), 2), 0) AS avg FROM reviews`);
+  const [totalRevenue] = await query(`SELECT COALESCE(SUM(price_snapshot), 0) AS total FROM bookings WHERE status = 'completed'`);
+  const [pendingComplaints] = await query(`SELECT COUNT(*) AS count FROM complaints WHERE status = 'pending'`);
   const recentBookings = await query(
     `SELECT b.id, b.status, b.requested_at, s.name AS service_name, cu.name AS customer_name, me.name AS mechanic_name
      FROM bookings b JOIN services s ON s.id = b.service_id
@@ -26,6 +28,7 @@ const getStats = asyncHandler(async (req, res) => {
     customerCount: customerCount.count, mechanicCount: mechanicCount.count,
     pendingApprovals: pendingApprovals.count, totalBookings: totalBookings.count,
     totalReviews: totalReviews.count, avgRating: avgRating.avg,
+    totalRevenue: Number(totalRevenue.total), pendingComplaints: pendingComplaints.count,
     bookingsByStatus, recentBookings, topMechanics,
   });
 });

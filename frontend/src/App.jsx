@@ -33,6 +33,7 @@ import AdminMechanics from './pages/admin/Mechanics';
 import AdminServices from './pages/admin/Services';
 import AdminBookings from './pages/admin/Bookings';
 import AdminReviews from './pages/admin/Reviews';
+import AdminComplaints from './pages/admin/Complaints';
 
 function PublicLayout({ children }) {
   return (
@@ -74,6 +75,7 @@ export default function App() {
       <Route path="/admin/services" element={<ProtectedRoute allowedRoles={['admin']}><AdminServices /></ProtectedRoute>} />
       <Route path="/admin/bookings" element={<ProtectedRoute allowedRoles={['admin']}><AdminBookings /></ProtectedRoute>} />
       <Route path="/admin/reviews" element={<ProtectedRoute allowedRoles={['admin']}><AdminReviews /></ProtectedRoute>} />
+      <Route path="/admin/complaints" element={<ProtectedRoute allowedRoles={['admin']}><AdminComplaints /></ProtectedRoute>} />
 
       <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />
     </Routes>
